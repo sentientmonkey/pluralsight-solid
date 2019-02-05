@@ -1,15 +1,15 @@
 import "jasmine";
-import { FileStore, Maybe } from "../src/filestore";
+import { MessageStore, Maybe } from "../src/filestore";
 import fs = require('fs');
 
 describe("something", () => {
-    var subject: FileStore;
+    var subject: MessageStore;
     const path = "/tmp";
     const testFile = 42;
     const fullTestFile = "/tmp/42.txt";
 
     beforeAll(() => {
-        subject = new FileStore(path);
+        subject = new MessageStore(path);
         if (fs.existsSync(fullTestFile)) {
             fs.unlinkSync(fullTestFile);
         }

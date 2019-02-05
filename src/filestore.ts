@@ -18,7 +18,6 @@ export class FileInfo {
     }
 }
 
-
 class Cache {
     addOrUpdate(id: number, message: string,
         f: (i: number, s: string) => string)
@@ -41,32 +40,56 @@ class Log {
     }
 }
 
+class StoreLogger {
+    Saving(id: number): void {
+        Log.information(`Saving message ${id}.`);
+    }
+
+    Saved(id: number): void {
+        Log.information(`Saved message ${id}.`);
+    }
+
+    Reading(id: number): void {
+        Log.debug(`Reading message ${id}.`);
+    }
+
+    DidNotFind(id: number): void {
+        Log.debug(`No message ${id} found.`);
+    }
+
+    Returning(id: number): void {
+        Log.debug(`Returning message ${id}.`);
+    }
+}
+
 export class FileStore {
     workingDirectory: DirectoryInfo;
-    cache: Cache;
+    private cache: Cache;
+    private log: StoreLogger;
 
     constructor(workingDirectory: DirectoryInfo) {
         this.workingDirectory = workingDirectory;
         this.cache = new Cache();
+        this.log = new StoreLogger();
     }
 
     save(id: number, message: string): void {
-        Log.information(`Saving message ${id}.`);
+        this.log.Saving(id);
         var file = this.getFileInfo(id);
         fs.writeFileSync(file.fullName, message);
         this.cache.addOrUpdate(id, message, (i, s) => message);
-        Log.information(`Saved message ${id}.`);
+        this.log.Saved(id);
     }
 
     read(id: number): Maybe<string> {
-        Log.debug(`Reading message ${id}.`);
+        this.log.Reading(id);
         var file = this.getFileInfo(id);
         if (!file.exists()) {
-            Log.debug(`No message ${id} found.`);
+            this.log.DidNotFind(id);
             return new Maybe();
         }
         var message = this.cache.getOrAdd(id, () => fs.readFileSync(file.fullName).toString());
-        Log.debug(`Returning message ${id}.`);
+        this.log.Returning(id);
         return new Maybe(message);
     }
 

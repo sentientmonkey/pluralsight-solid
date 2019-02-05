@@ -18,15 +18,24 @@ export class FileInfo {
     }
 }
 
-class Cache {
-    addOrUpdate(id: number, message: string,
-        f: (i: number, s: string) => string)
-        : void {
-        f(id, message);
+class StoreCache {
+    private cache: Map<number, string>;
+
+    constructor() {
+        this.cache = new Map<number, string>();
+    }
+
+    addOrUpdate(id: number, message: string): void {
+        this.cache.set(id, message);
     }
 
     getOrAdd(id: number, f: () => string): string {
-        return f();
+        if (this.cache.has(id)) {
+            return this.cache.get(id);
+        }
+        var value = f();
+        this.cache.set(id, value);
+        return value;
     }
 }
 
@@ -64,12 +73,12 @@ class StoreLogger {
 
 export class FileStore {
     workingDirectory: DirectoryInfo;
-    private cache: Cache;
+    private cache: StoreCache;
     private log: StoreLogger;
 
     constructor(workingDirectory: DirectoryInfo) {
         this.workingDirectory = workingDirectory;
-        this.cache = new Cache();
+        this.cache = new StoreCache();
         this.log = new StoreLogger();
     }
 
@@ -77,7 +86,7 @@ export class FileStore {
         this.log.Saving(id);
         var file = this.getFileInfo(id);
         fs.writeFileSync(file.fullName, message);
-        this.cache.addOrUpdate(id, message, (i, s) => message);
+        this.cache.addOrUpdate(id, message);
         this.log.Saved(id);
     }
 

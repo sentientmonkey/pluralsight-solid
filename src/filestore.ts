@@ -1,55 +1,78 @@
 import fs = require('fs');
 import path = require('path');
+import { Maybe } from "./maybe";
 
-export class Maybe<T> {
-    private values: T[];
+export { Maybe };
 
-    constructor(value?: T) {
-        if (value) {
-            this.values = [value];
-        } else {
-            this.values = [];
-        }
+export type DirectoryInfo = string;
+
+export class FileInfo {
+    fullName: string;
+
+    constructor(fullName: string) {
+        this.fullName = fullName;
     }
 
-    defaultIfEmpty(defaultValue: T): T {
-        if (this.isEmpty()) {
-            return defaultValue;
-        } else {
-            return this.value();
-        }
+    exists(): boolean {
+        return fs.existsSync(this.fullName);
+    }
+}
+
+
+class Cache {
+    addOrUpdate(id: number, message: string,
+        f: (i: number, s: string) => string)
+        : void {
+        f(id, message);
     }
 
-    isEmpty(): boolean {
-        return this.values.length == 0;
+    getOrAdd(id: number, f: () => string): string {
+        return f();
+    }
+}
+
+class Log {
+    static debug(msg: string): void {
+        console.log("[DEBUG] " + msg);
     }
 
-    value(): T {
-        return this.values[0];
+    static information(msg: string): void {
+        console.log("[INFO] " + msg);
     }
 }
 
 export class FileStore {
-    workingDirectory: string;
+    workingDirectory: DirectoryInfo;
+    cache: Cache;
 
-    constructor(workingDirectory: string) {
+    constructor(workingDirectory: DirectoryInfo) {
         this.workingDirectory = workingDirectory;
+        this.cache = new Cache();
     }
 
     save(id: number, message: string): void {
-        var path = this.getFilename(id);
-        fs.writeFileSync(path, message);
+        Log.information(`Saving message ${id}.`);
+        var file = this.getFileInfo(id);
+        fs.writeFileSync(file.fullName, message);
+        this.cache.addOrUpdate(id, message, (i, s) => message);
+        Log.information(`Saved message ${id}.`);
     }
 
     read(id: number): Maybe<string> {
-        var path = this.getFilename(id);
-        if (!fs.existsSync(path)) {
+        Log.debug(`Reading message ${id}.`);
+        var file = this.getFileInfo(id);
+        if (!file.exists()) {
+            Log.debug(`No message ${id} found.`);
             return new Maybe();
         }
-        return new Maybe(fs.readFileSync(path).toString());
+        var message = this.cache.getOrAdd(id, () => fs.readFileSync(file.fullName).toString());
+        Log.debug(`Returning message ${id}.`);
+        return new Maybe(message);
     }
 
-    getFilename(id: number): string {
-        return path.join(this.workingDirectory, id + ".txt");
+    getFileInfo(id: number): FileInfo {
+        var fullName = path.join(this.workingDirectory, id + ".txt");
+        return new FileInfo(fullName);
     }
 }
+

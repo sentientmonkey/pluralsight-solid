@@ -3,10 +3,10 @@ import { FileStore, Maybe } from "../src/filestore";
 import fs = require('fs');
 
 describe("something", () => {
-    var subject;
+    var subject: FileStore;
     const path = "/tmp";
-    const testFile = "test";
-    const fullTestFile = "/tmp/test.txt";
+    const testFile = 42;
+    const fullTestFile = "/tmp/42.txt";
 
     beforeAll(() => {
         subject = new FileStore(path);
@@ -22,6 +22,6 @@ describe("something", () => {
     });
 
     it("should handle reading file that doesn't exist", () => {
-        expect(subject.read("nope").defaultIfEmpty("empty")).toEqual("empty");
+        expect(subject.read(0).defaultIfEmpty("empty")).toEqual("empty");
     });
 });

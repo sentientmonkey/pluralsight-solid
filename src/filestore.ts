@@ -4,7 +4,31 @@ import { Maybe } from "./maybe";
 
 export { Maybe };
 
-export type DirectoryInfo = string;
+export class ArgumentNullError extends Error {
+    constructor(message?: string) {
+        super(message);
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+
+export class ArgumentError extends Error {
+    constructor(message?: string) {
+        super(message);
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+
+export class DirectoryInfo {
+    fullName: string;
+
+    constructor(fullName: string) {
+        this.fullName = fullName;
+    }
+
+    exists(): boolean {
+        return fs.existsSync(this.fullName);
+    }
+}
 
 export class FileInfo {
     fullName: string;
@@ -80,8 +104,8 @@ class FileStore {
         return fs.readFileSync(path).toString();
     }
 
-    getFileInfo(id: number, workingDirectory: string): FileInfo {
-        var fullName = path.join(workingDirectory, id + ".txt");
+    getFileInfo(id: number, workingDirectory: DirectoryInfo): FileInfo {
+        var fullName = path.join(workingDirectory.fullName, id + ".txt");
         return new FileInfo(fullName);
     }
 }
@@ -93,6 +117,12 @@ export class MessageStore {
     private fileStore: FileStore;
 
     constructor(workingDirectory: DirectoryInfo) {
+        if (workingDirectory == null) {
+            throw new ArgumentNullError("Working Directory missing.");
+        }
+        if (!workingDirectory.exists()) {
+            throw new ArgumentError("Working Directory does not exist.");
+        }
         this.workingDirectory = workingDirectory;
         this.cache = new StoreCache();
         this.log = new StoreLogger();

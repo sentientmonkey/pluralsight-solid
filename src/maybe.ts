@@ -17,8 +17,12 @@ export class Maybe<T> {
         }
     }
 
-    isEmpty(): boolean {
+    isEmpty() : boolean {
         return this.values.length == 0;
+    }
+
+    any() : boolean {
+        return !this.isEmpty(); 
     }
 
     value(): T {

@@ -43,17 +43,17 @@ export class FileInfo {
 }
 
 class StoreCache {
-    private cache: Map<number, string>;
+    private cache: Map<number, Maybe<string>>;
 
     constructor() {
-        this.cache = new Map<number, string>();
+        this.cache = new Map<number, Maybe<string>>();
     }
 
     addOrUpdate(id: number, message: string): void {
-        this.cache.set(id, message);
+        this.cache.set(id, new Maybe(message));
     }
 
-    getOrAdd(id: number, f: () => string): string {
+    getOrAdd(id: number, f: () => Maybe<string>): Maybe<string> {
         if (this.cache.has(id)) {
             return this.cache.get(id);
         }
@@ -96,22 +96,41 @@ class StoreLogger {
 }
 
 interface IStore {
-    writeFileSync(path: string, message: string) : void;
-    readFileSync(path: string) : string;
-    getFileInfo(id: number, workingDirectory: DirectoryInfo): FileInfo;
+    writeFileSync(id: number, message: string) : void;
+    readFileSync(id: number) : Maybe<string>;
+    getFileInfo(id: number): FileInfo;
 }
 
 class FileStore implements IStore {
-    writeFileSync(path: string, message: string) {
+    workingDirectory: DirectoryInfo;
+
+    constructor(workingDirectory: DirectoryInfo) {
+        if (workingDirectory == null) {
+            throw new ArgumentNullError("Working Directory missing.");
+        }
+        if (!workingDirectory.exists()) {
+            throw new ArgumentError("Working Directory does not exist.");
+        }
+        this.workingDirectory = workingDirectory;
+    }
+
+    writeFileSync(id: number, message: string) {
+        var path = this.getFileInfo(id).fullName;
         fs.writeFileSync(path, message);
     }
 
-    readFileSync(path: string): string {
-        return fs.readFileSync(path).toString();
+    readFileSync(id: number): Maybe<string> {
+        var file = this.getFileInfo(id);
+        if (!file.exists()) {
+            return new Maybe();
+        }
+
+        var path = file.fullName;
+        return new Maybe(fs.readFileSync(path).toString());
     }
 
-    getFileInfo(id: number, workingDirectory: DirectoryInfo): FileInfo {
-        var fullName = path.join(workingDirectory.fullName, id + ".txt");
+    getFileInfo(id: number): FileInfo {
+        var fullName = path.join(this.workingDirectory.fullName, id + ".txt");
         return new FileInfo(fullName);
     }
 }
@@ -132,27 +151,30 @@ export class MessageStore {
         this.workingDirectory = workingDirectory;
         this.cache = new StoreCache();
         this.log = new StoreLogger();
-        this.store = new FileStore();
+        this.store = new FileStore(this.workingDirectory);
     }
 
     save(id: number, message: string): void {
         this.log.Saving(id);
-        var file = this.store.getFileInfo(id, this.workingDirectory);
-        this.store.writeFileSync(file.fullName, message);
+        this.store.writeFileSync(id, message);
         this.cache.addOrUpdate(id, message);
         this.log.Saved(id);
     }
 
     read(id: number): Maybe<string> {
         this.log.Reading(id);
-        var file = this.store.getFileInfo(id, this.workingDirectory);
-        if (!file.exists()) {
+        var message = this.cache.getOrAdd(
+            id,
+            () => this.store.readFileSync(id));
+        if (message.any())
+            this.log.Returning(id);
+        else
             this.log.DidNotFind(id);
-            return new Maybe();
-        }
-        var message = this.cache.getOrAdd(id, () => this.store.readFileSync(file.fullName));
-        this.log.Returning(id);
-        return new Maybe(message);
+        return message;
+    }
+
+    getFileInfo(id: number): FileInfo {
+        return this.store.getFileInfo(id);
     }
 }
 

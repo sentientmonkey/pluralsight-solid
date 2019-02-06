@@ -95,7 +95,13 @@ class StoreLogger {
     }
 }
 
-class FileStore {
+interface IStore {
+    writeFileSync(path: string, message: string) : void;
+    readFileSync(path: string) : string;
+    getFileInfo(id: number, workingDirectory: DirectoryInfo): FileInfo;
+}
+
+class FileStore implements IStore {
     writeFileSync(path: string, message: string) {
         fs.writeFileSync(path, message);
     }
@@ -114,7 +120,7 @@ export class MessageStore {
     workingDirectory: DirectoryInfo;
     private cache: StoreCache;
     private log: StoreLogger;
-    private fileStore: FileStore;
+    private store: IStore;
 
     constructor(workingDirectory: DirectoryInfo) {
         if (workingDirectory == null) {
@@ -126,25 +132,25 @@ export class MessageStore {
         this.workingDirectory = workingDirectory;
         this.cache = new StoreCache();
         this.log = new StoreLogger();
-        this.fileStore = new FileStore();
+        this.store = new FileStore();
     }
 
     save(id: number, message: string): void {
         this.log.Saving(id);
-        var file = this.fileStore.getFileInfo(id, this.workingDirectory);
-        this.fileStore.writeFileSync(file.fullName, message);
+        var file = this.store.getFileInfo(id, this.workingDirectory);
+        this.store.writeFileSync(file.fullName, message);
         this.cache.addOrUpdate(id, message);
         this.log.Saved(id);
     }
 
     read(id: number): Maybe<string> {
         this.log.Reading(id);
-        var file = this.fileStore.getFileInfo(id, this.workingDirectory);
+        var file = this.store.getFileInfo(id, this.workingDirectory);
         if (!file.exists()) {
             this.log.DidNotFind(id);
             return new Maybe();
         }
-        var message = this.cache.getOrAdd(id, () => this.fileStore.readFileSync(file.fullName));
+        var message = this.cache.getOrAdd(id, () => this.store.readFileSync(file.fullName));
         this.log.Returning(id);
         return new Maybe(message);
     }

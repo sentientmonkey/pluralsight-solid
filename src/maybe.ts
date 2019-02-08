@@ -10,19 +10,15 @@ export class Maybe<T> {
     }
 
     defaultIfEmpty(defaultValue: T): T {
-        if (this.isEmpty()) {
-            return defaultValue;
-        } else {
+        if (this.any()) {
             return this.value();
+        } else {
+            return defaultValue;
         }
     }
 
-    isEmpty() : boolean {
-        return this.values.length == 0;
-    }
-
-    any() : boolean {
-        return !this.isEmpty(); 
+    any(): boolean {
+        return this.values.length !== 0;
     }
 
     value(): T {

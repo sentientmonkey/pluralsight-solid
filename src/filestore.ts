@@ -67,11 +67,12 @@ export class StoreCache implements IStoreWriter, IStoreReader {
     }
 
     read(id: number): Maybe<string> {
-        if (this.cache.has(id)) {
-            return this.cache.get(id);
+        var retVal = this.cache.get(id) || new Maybe();
+        if (retVal.any()) {
+            return retVal;
         }
 
-        var retVal = this.reader.read(id);
+        retVal = this.reader.read(id);
         if (retVal.any())
             this.cache.set(id, retVal);
 

@@ -1,16 +1,15 @@
 {
   "scripts": {
-    "test": "ts-node node_modules/jasmine/bin/jasmine"
+    "test": "ts-node node_modules/jasmine/bin/jasmine",
+    "test:live": "ts-node node_modules/nodemon/bin/nodemon.js -w . ./node_modules/.bin/jasmine -- config=spec/support/jasmine.json",
+    "build": "tsc -p ."
   },
   "devDependencies": {
     "@types/jasmine": "^3.3.8",
-    "@types/node": "^10.12.21",
+    "@types/node": "^10.12.23",
     "jasmine": "^3.3.1",
+    "nodemon": "^1.18.9",
     "ts-node": "^8.0.2",
-    "typescript": "^3.3.1"
-  },
-  "dependencies": {
-    "@types/core-js": "^2.5.0",
-    "@types/es6-shim": "^0.31.39"
+    "typescript": "^3.3.3"
   }
 }

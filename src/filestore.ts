@@ -46,30 +46,25 @@ interface IStoreWriter {
     save(id: number, message: string): void;
 }
 
-class CompositeStoreWriter implements IStoreWriter {
-    private writers: IStoreWriter[];
-
-    constructor(...writers: IStoreWriter[]) {
-        this.writers = writers;
-    }
-
-    save(id: number, message: string): void {
-        this.writers.forEach((w) => w.save(id, message));
-    }
+interface IStoreReader {
+    read(id: number): Maybe<string>;
 }
+
 
 interface IStoreCache {
     save(id: number, message: string): void;
-    getOrAdd(id: number, f: () => Maybe<string>): Maybe<string>;
+    read(id: number): Maybe<string>;
 }
 
-class StoreCache implements IStoreCache, IStoreWriter {
+class StoreCache implements IStoreCache, IStoreWriter, IStoreReader {
     private cache: Map<number, Maybe<string>>;
     private writer: IStoreWriter;
+    private reader: IStoreReader;
 
-    constructor(writer: IStoreWriter) {
+    constructor(writer: IStoreWriter, reader: IStoreReader) {
         this.cache = new Map<number, Maybe<string>>();
         this.writer = writer;
+        this.reader = reader;
     }
 
     save(id: number, message: string): void {
@@ -77,13 +72,16 @@ class StoreCache implements IStoreCache, IStoreWriter {
         this.cache.set(id, new Maybe(message));
     }
 
-    getOrAdd(id: number, f: () => Maybe<string>): Maybe<string> {
+    read(id: number): Maybe<string> {
         if (this.cache.has(id)) {
             return this.cache.get(id);
         }
-        var value = f();
-        this.cache.set(id, value);
-        return value;
+
+        var retVal = this.reader.read(id);
+        if (retVal.any())
+            this.cache.set(id, retVal);
+
+        return new Maybe();
     }
 }
 
@@ -105,17 +103,29 @@ interface IStoreLogger {
     Returning(id: number): void;
 }
 
-class StoreLogger implements IStoreLogger, IStoreWriter {
+class StoreLogger implements IStoreLogger, IStoreWriter, IStoreReader {
     private writer: IStoreWriter;
+    private reader: IStoreReader;
 
-    constructor(writer: IStoreWriter) {
+    constructor(writer: IStoreWriter, reader: IStoreReader) {
         this.writer = writer;
+        this.reader = reader;
     }
 
     save(id: number, message: string): void {
         Log.information(`Saving message ${id}.`);
         this.writer.save(id, message);
         Log.information(`Saved message ${id}.`);
+    }
+
+    read(id: number): Maybe<string> {
+        Log.debug(`Reading message ${id}.`);
+        var retVal = this.reader.read(id)
+        if (retVal.any())
+            Log.debug(`Returning message ${id}.`);
+        else
+            Log.debug(`No message ${id} found.`);
+        return retVal;
     }
 
     Saving(id: number, message: string): void {
@@ -153,7 +163,7 @@ class LogSavedStoreWriter implements IStoreWriter {
 
 interface IStore {
     save(id: number, message: string): void;
-    readFileSync(id: number): Maybe<string>;
+    read(id: number): Maybe<string>;
 }
 
 interface IFileLocator {
@@ -178,9 +188,10 @@ class FileStore implements IStore, IFileLocator {
         fs.writeFileSync(path, message);
     }
 
-    readFileSync(id: number): Maybe<string> {
+    read(id: number): Maybe<string> {
         var file = this.getFileInfo(id);
         if (!file.exists()) {
+
             return new Maybe();
         }
 
@@ -201,17 +212,19 @@ export class MessageStore {
     private store: IStore;
     private fileLocator: IFileLocator;
     private writer: IStoreWriter;
+    private reader: IStoreReader;
 
     constructor(workingDirectory: DirectoryInfo) {
         this.workingDirectory = workingDirectory;
         var fileStore = new FileStore(this.workingDirectory);
-        var c = new StoreCache(fileStore);
+        var c = new StoreCache(fileStore, fileStore);
         this.cache = c
-        var l = new StoreLogger(c);
+        var l = new StoreLogger(c, c);
         this.log = l;
         this.store = fileStore;
         this.fileLocator = fileStore;
         this.writer = l;
+        this.reader = l;
     }
 
     save(id: number, message: string): void {
@@ -219,15 +232,7 @@ export class MessageStore {
     }
 
     read(id: number): Maybe<string> {
-        this.log.Reading(id);
-        var message = this.cache.getOrAdd(
-            id,
-            () => this.store.readFileSync(id));
-        if (message.any())
-            this.log.Returning(id);
-        else
-            this.log.DidNotFind(id);
-        return message;
+        return this.reader.read(id)
     }
 
     getFileInfo(id: number): FileInfo {

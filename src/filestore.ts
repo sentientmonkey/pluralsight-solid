@@ -46,6 +46,18 @@ interface IStoreWriter {
     save(id: number, message: string): void;
 }
 
+class CompositeStoreWriter implements IStoreWriter {
+    private writers: IStoreWriter[];
+
+    constructor(...writers: IStoreWriter[]) {
+        this.writers = writers;
+    }
+
+    save(id: number, message: string): void {
+        this.writers.forEach((w) => w.save(id, message));
+    }
+}
+
 interface IStoreCache {
     save(id: number, message: string): void;
     getOrAdd(id: number, f: () => Maybe<string>): Maybe<string>;
@@ -173,6 +185,7 @@ export class MessageStore {
     private log: IStoreLogger;
     private store: IStore;
     private fileLocator: IFileLocator;
+    private writer: IStoreWriter;
 
     constructor(workingDirectory: DirectoryInfo) {
         if (workingDirectory == null) {
@@ -182,19 +195,22 @@ export class MessageStore {
             throw new ArgumentError("Working Directory does not exist.");
         }
         this.workingDirectory = workingDirectory;
-        this.cache = new StoreCache();
+        var c = new StoreCache()
+        this.cache = c
         this.log = new StoreLogger();
         var fileStore = new FileStore(this.workingDirectory);
         this.store = fileStore;
         this.fileLocator = fileStore;
+        this.writer = new CompositeStoreWriter(
+            new LogSavingStoreWriter(),
+            fileStore,
+            c,
+            new LogSavedStoreWriter()
+        )
     }
 
     save(id: number, message: string): void {
-        this.log.Saving(id, message);
-        new LogSavingStoreWriter().save(id, message);
-        this.store.save(id, message);
-        this.cache.save(id, message);
-        new LogSavedStoreWriter().save(id, message);
+        this.writer.save(id, message);
     }
 
     read(id: number): Maybe<string> {

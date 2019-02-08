@@ -96,12 +96,15 @@ class StoreLogger {
 }
 
 interface IStore {
-    writeFileSync(id: number, message: string) : void;
-    readFileSync(id: number) : Maybe<string>;
+    writeFileSync(id: number, message: string): void;
+    readFileSync(id: number): Maybe<string>;
+}
+
+interface IFileLocator {
     getFileInfo(id: number): FileInfo;
 }
 
-class FileStore implements IStore {
+class FileStore implements IStore, IFileLocator {
     workingDirectory: DirectoryInfo;
 
     constructor(workingDirectory: DirectoryInfo) {
@@ -140,6 +143,7 @@ export class MessageStore {
     private cache: StoreCache;
     private log: StoreLogger;
     private store: IStore;
+    private fileLocator: IFileLocator;
 
     constructor(workingDirectory: DirectoryInfo) {
         if (workingDirectory == null) {
@@ -151,7 +155,9 @@ export class MessageStore {
         this.workingDirectory = workingDirectory;
         this.cache = new StoreCache();
         this.log = new StoreLogger();
-        this.store = new FileStore(this.workingDirectory);
+        var fileStore = new FileStore(this.workingDirectory);
+        this.store = fileStore;
+        this.fileLocator = fileStore;
     }
 
     save(id: number, message: string): void {
@@ -174,7 +180,7 @@ export class MessageStore {
     }
 
     getFileInfo(id: number): FileInfo {
-        return this.store.getFileInfo(id);
+        return this.fileLocator.getFileInfo(id);
     }
 }
 

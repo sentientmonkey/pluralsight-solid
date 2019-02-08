@@ -63,14 +63,17 @@ interface IStoreCache {
     getOrAdd(id: number, f: () => Maybe<string>): Maybe<string>;
 }
 
-class StoreCache {
+class StoreCache implements IStoreCache, IStoreWriter {
     private cache: Map<number, Maybe<string>>;
+    private writer: IStoreWriter;
 
-    constructor() {
+    constructor(writer: IStoreWriter) {
         this.cache = new Map<number, Maybe<string>>();
+        this.writer = writer;
     }
 
     save(id: number, message: string): void {
+        this.writer.save(id, message);
         this.cache.set(id, new Maybe(message));
     }
 
@@ -102,7 +105,19 @@ interface IStoreLogger {
     Returning(id: number): void;
 }
 
-class StoreLogger implements IStoreLogger {
+class StoreLogger implements IStoreLogger, IStoreWriter {
+    private writer: IStoreWriter;
+
+    constructor(writer: IStoreWriter) {
+        this.writer = writer;
+    }
+
+    save(id: number, message: string): void {
+        Log.information(`Saving message ${id}.`);
+        this.writer.save(id, message);
+        Log.information(`Saved message ${id}.`);
+    }
+
     Saving(id: number, message: string): void {
         Log.information(`Saving message ${id}.`);
     }
@@ -188,25 +203,15 @@ export class MessageStore {
     private writer: IStoreWriter;
 
     constructor(workingDirectory: DirectoryInfo) {
-        if (workingDirectory == null) {
-            throw new ArgumentNullError("Working Directory missing.");
-        }
-        if (!workingDirectory.exists()) {
-            throw new ArgumentError("Working Directory does not exist.");
-        }
         this.workingDirectory = workingDirectory;
-        var c = new StoreCache()
-        this.cache = c
-        this.log = new StoreLogger();
         var fileStore = new FileStore(this.workingDirectory);
+        var c = new StoreCache(fileStore);
+        this.cache = c
+        var l = new StoreLogger(c);
+        this.log = l;
         this.store = fileStore;
         this.fileLocator = fileStore;
-        this.writer = new CompositeStoreWriter(
-            new LogSavingStoreWriter(),
-            fileStore,
-            c,
-            new LogSavedStoreWriter()
-        )
+        this.writer = l;
     }
 
     save(id: number, message: string): void {

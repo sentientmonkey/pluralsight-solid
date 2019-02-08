@@ -42,21 +42,15 @@ export class FileInfo {
     }
 }
 
-interface IStoreWriter {
+export interface IStoreWriter {
     save(id: number, message: string): void;
 }
 
-interface IStoreReader {
+export interface IStoreReader {
     read(id: number): Maybe<string>;
 }
 
-
-interface IStoreCache {
-    save(id: number, message: string): void;
-    read(id: number): Maybe<string>;
-}
-
-class StoreCache implements IStoreCache, IStoreWriter, IStoreReader {
+export class StoreCache implements IStoreWriter, IStoreReader {
     private cache: Map<number, Maybe<string>>;
     private writer: IStoreWriter;
     private reader: IStoreReader;
@@ -85,92 +79,56 @@ class StoreCache implements IStoreCache, IStoreWriter, IStoreReader {
     }
 }
 
-class Log {
-    static debug(msg: string): void {
+export interface ILogger {
+    debug(msg: string): void;
+    information(msg: string): void;
+}
+
+export class Log implements ILogger {
+    debug(msg: string): void {
         console.log("[DEBUG] " + msg);
     }
 
-    static information(msg: string): void {
+    information(msg: string): void {
         console.log("[INFO] " + msg);
     }
 }
 
-interface IStoreLogger {
-    Saving(id: number, message: string): void;
-    Saved(id: number, message: string): void;
-    Reading(id: number): void;
-    DidNotFind(id: number): void;
-    Returning(id: number): void;
-}
-
-class StoreLogger implements IStoreLogger, IStoreWriter, IStoreReader {
+export class StoreLogger implements IStoreWriter, IStoreReader {
     private writer: IStoreWriter;
     private reader: IStoreReader;
+    private log: ILogger;
 
-    constructor(writer: IStoreWriter, reader: IStoreReader) {
+    constructor(log: ILogger,
+        writer: IStoreWriter,
+        reader: IStoreReader) {
+        this.log = log
         this.writer = writer;
         this.reader = reader;
     }
 
     save(id: number, message: string): void {
-        Log.information(`Saving message ${id}.`);
+        this.log.information(`Saving message ${id}.`);
         this.writer.save(id, message);
-        Log.information(`Saved message ${id}.`);
+        this.log.information(`Saved message ${id}.`);
     }
 
     read(id: number): Maybe<string> {
-        Log.debug(`Reading message ${id}.`);
+        this.log.debug(`Reading message ${id}.`);
         var retVal = this.reader.read(id)
         if (retVal.any())
-            Log.debug(`Returning message ${id}.`);
+            this.log.debug(`Returning message ${id}.`);
         else
-            Log.debug(`No message ${id} found.`);
+            this.log.debug(`No message ${id} found.`);
         return retVal;
     }
-
-    Saving(id: number, message: string): void {
-        Log.information(`Saving message ${id}.`);
-    }
-
-    Saved(id: number, message: string): void {
-        Log.information(`Saved message ${id}.`);
-    }
-
-    Reading(id: number): void {
-        Log.debug(`Reading message ${id}.`);
-    }
-
-    DidNotFind(id: number): void {
-        Log.debug(`No message ${id} found.`);
-    }
-
-    Returning(id: number): void {
-        Log.debug(`Returning message ${id}.`);
-    }
 }
 
-class LogSavingStoreWriter implements IStoreWriter {
-    save(id: number, message: string): void {
-        Log.information(`Saving message ${id}.`);
-    }
-}
-
-class LogSavedStoreWriter implements IStoreWriter {
-    save(id: number, message: string): void {
-        Log.information(`Saved message ${id}.`);
-    }
-}
-
-interface IStore {
-    save(id: number, message: string): void;
-    read(id: number): Maybe<string>;
-}
-
-interface IFileLocator {
+export interface IFileLocator {
     getFileInfo(id: number): FileInfo;
 }
 
-class FileStore implements IStore, IFileLocator {
+export class FileStore implements IFileLocator, IStoreWriter, IStoreReader {
     workingDirectory: DirectoryInfo;
 
     constructor(workingDirectory: DirectoryInfo) {
@@ -205,26 +163,36 @@ class FileStore implements IStore, IFileLocator {
     }
 }
 
+export class FileMessageStoreFactory {
+    static build(path: string): MessageStore {
+        var directoryInfo = new DirectoryInfo(path);
+        var logger = new Log();
+        var fileStore = new FileStore(directoryInfo);
+        var cache = new StoreCache(fileStore, fileStore);
+        var log = new StoreLogger(logger, cache, cache);
+        return new MessageStore(log, log, fileStore);
+    }
+}
+
 export class MessageStore {
-    workingDirectory: DirectoryInfo;
-    private cache: IStoreCache;
-    private log: IStoreLogger;
-    private store: IStore;
     private fileLocator: IFileLocator;
     private writer: IStoreWriter;
     private reader: IStoreReader;
 
-    constructor(workingDirectory: DirectoryInfo) {
-        this.workingDirectory = workingDirectory;
-        var fileStore = new FileStore(this.workingDirectory);
-        var c = new StoreCache(fileStore, fileStore);
-        this.cache = c
-        var l = new StoreLogger(c, c);
-        this.log = l;
-        this.store = fileStore;
-        this.fileLocator = fileStore;
-        this.writer = l;
-        this.reader = l;
+    constructor(writer: IStoreWriter,
+        reader: IStoreReader,
+        fileLocator: IFileLocator) {
+
+        if (writer == null)
+            throw new ArgumentNullError("writer");
+        if (reader == null)
+            throw new ArgumentNullError("reader");
+        if (fileLocator == null)
+            throw new ArgumentNullError("fileLocator")
+
+        this.fileLocator = fileLocator;
+        this.reader = reader;
+        this.writer = writer;
     }
 
     save(id: number, message: string): void {

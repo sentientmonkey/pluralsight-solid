@@ -1,5 +1,5 @@
 import "jasmine";
-import { MessageStore, DirectoryInfo, Maybe, ArgumentNullError, ArgumentError } from "../src/filestore";
+import { MessageStore, DirectoryInfo, Maybe, ArgumentNullError, ArgumentError, Log, FileStore, StoreCache, StoreLogger, FileMessageStoreFactory } from "../src/filestore";
 import fs = require('fs');
 
 describe("something", () => {
@@ -10,23 +10,15 @@ describe("something", () => {
     const fullTestFile = "/tmp/42.txt";
 
     beforeAll(() => {
-        directoryInfo = new DirectoryInfo(path);
-        subject = new MessageStore(directoryInfo);
+        subject = FileMessageStoreFactory.build(path);
         if (fs.existsSync(fullTestFile)) {
             fs.unlinkSync(fullTestFile);
         }
     });
 
-    it("should throw an exception when working directory not set", () => {
-        expect(() => {
-            subject = new MessageStore(null);
-        }).toThrowError(ArgumentNullError);
-    });
-
     it("should throw an exception when working directory does not exist", () => {
         expect(() => {
-            directoryInfo = new DirectoryInfo("/does/not/exist");
-            subject = new MessageStore(directoryInfo);
+            subject = FileMessageStoreFactory.build("/does/not/exist");
         }).toThrowError(ArgumentError);
     });
 

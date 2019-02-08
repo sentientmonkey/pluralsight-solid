@@ -42,6 +42,15 @@ export class FileInfo {
     }
 }
 
+interface IStoreWriter {
+    save(id: number, message: string): void;
+}
+
+interface IStoreCache {
+    save(id: number, message: string): void;
+    getOrAdd(id: number, f: () => Maybe<string>): Maybe<string>;
+}
+
 class StoreCache {
     private cache: Map<number, Maybe<string>>;
 
@@ -49,7 +58,7 @@ class StoreCache {
         this.cache = new Map<number, Maybe<string>>();
     }
 
-    addOrUpdate(id: number, message: string): void {
+    save(id: number, message: string): void {
         this.cache.set(id, new Maybe(message));
     }
 
@@ -73,12 +82,20 @@ class Log {
     }
 }
 
-class StoreLogger {
-    Saving(id: number): void {
+interface IStoreLogger {
+    Saving(id: number, message: string): void;
+    Saved(id: number, message: string): void;
+    Reading(id: number): void;
+    DidNotFind(id: number): void;
+    Returning(id: number): void;
+}
+
+class StoreLogger implements IStoreLogger {
+    Saving(id: number, message: string): void {
         Log.information(`Saving message ${id}.`);
     }
 
-    Saved(id: number): void {
+    Saved(id: number, message: string): void {
         Log.information(`Saved message ${id}.`);
     }
 
@@ -95,8 +112,20 @@ class StoreLogger {
     }
 }
 
+class LogSavingStoreWriter implements IStoreWriter {
+    save(id: number, message: string): void {
+        Log.information(`Saving message ${id}.`);
+    }
+}
+
+class LogSavedStoreWriter implements IStoreWriter {
+    save(id: number, message: string): void {
+        Log.information(`Saved message ${id}.`);
+    }
+}
+
 interface IStore {
-    writeFileSync(id: number, message: string): void;
+    save(id: number, message: string): void;
     readFileSync(id: number): Maybe<string>;
 }
 
@@ -117,7 +146,7 @@ class FileStore implements IStore, IFileLocator {
         this.workingDirectory = workingDirectory;
     }
 
-    writeFileSync(id: number, message: string) {
+    save(id: number, message: string) {
         var path = this.getFileInfo(id).fullName;
         fs.writeFileSync(path, message);
     }
@@ -140,8 +169,8 @@ class FileStore implements IStore, IFileLocator {
 
 export class MessageStore {
     workingDirectory: DirectoryInfo;
-    private cache: StoreCache;
-    private log: StoreLogger;
+    private cache: IStoreCache;
+    private log: IStoreLogger;
     private store: IStore;
     private fileLocator: IFileLocator;
 
@@ -161,10 +190,11 @@ export class MessageStore {
     }
 
     save(id: number, message: string): void {
-        this.log.Saving(id);
-        this.store.writeFileSync(id, message);
-        this.cache.addOrUpdate(id, message);
-        this.log.Saved(id);
+        this.log.Saving(id, message);
+        new LogSavingStoreWriter().save(id, message);
+        this.store.save(id, message);
+        this.cache.save(id, message);
+        new LogSavedStoreWriter().save(id, message);
     }
 
     read(id: number): Maybe<string> {

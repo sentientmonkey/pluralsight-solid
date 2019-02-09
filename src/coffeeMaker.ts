@@ -88,30 +88,80 @@ export interface CoffeeMakerAPI {
     setReliefValveState(s: ReliefValveState): void;
 }
 
-
-export class CoffeeMaker {
-    private hardware: CoffeeMakerAPI;
+abstract class HardwareComponent {
+    protected hardware: CoffeeMakerAPI;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.hardware = hardware;
     }
 
-    tick(): void {
+    public potEmpty(): boolean {
+        return this.hardware.getWarmerPlateStatus()
+            === WarmerPlateStatus.PotEmpty;
+    }
+}
+
+class WarmerPlate extends HardwareComponent {
+    public update(): void {
+        if (this.potNotEmpty()) {
+            this.hardware.setWarmerState(WarmerState.On);
+        } else {
+            this.hardware.setWarmerState(WarmerState.Off);
+        }
+    }
+
+    private potNotEmpty(): boolean {
+        return this.hardware.getWarmerPlateStatus()
+            === WarmerPlateStatus.PotNotEmpty;
+    }
+}
+
+class Boiler extends HardwareComponent {
+    public update(): void {
         if (this.readyToBrew()) {
             this.hardware.setBoilerState(BoilerState.On);
+        }
+        if (this.boilerIsEmpty()) {
+            this.hardware.setBoilerState(BoilerState.Off);
         }
     }
 
     private readyToBrew(): boolean {
         return this.brewButtonPushed()
-            && this.potEmpty();
+            && this.potEmpty()
+            && this.boilerHasWater();
+    }
+
+
+    public boilerIsEmpty(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.Empty;
+    }
+
+    public boilerHasWater(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.NotEmpty;
     }
 
     private brewButtonPushed(): boolean {
-        return this.hardware.getBrewButtonStatus() === BrewButtonStatus.Pushed;
+        return this.hardware.getBrewButtonStatus()
+            === BrewButtonStatus.Pushed;
+    }
+}
+
+export class CoffeeMaker {
+    private hardware: CoffeeMakerAPI;
+    private warmerPlate: WarmerPlate;
+    private boiler: Boiler;
+
+    constructor(hardware: CoffeeMakerAPI) {
+        this.hardware = hardware;
+        this.warmerPlate = new WarmerPlate(hardware);
+        this.boiler = new Boiler(hardware);
     }
 
-    private potEmpty(): boolean {
-        return this.hardware.getWarmerPlateStatus() === WarmerPlateStatus.PotEmpty;
+    update(): void {
+        this.boiler.update();
+        this.warmerPlate.update();
     }
 }

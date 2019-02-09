@@ -1,6 +1,6 @@
 import "jasmine";
 
-import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState } from "../src/coffeeMaker";
+import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState } from "../src/coffeeMaker";
 
 describe("CoffeeMaker", () => {
     var api: jasmine.SpyObj<CoffeeMakerAPI>;
@@ -14,21 +14,23 @@ describe("CoffeeMaker", () => {
                 "getBoilerStatus",
                 "getBrewButtonStatus",
                 "setBoilerState",
+                "setWarmerState",
             ]
         );
         subject = new CoffeeMaker(api);
     });
 
     it("will not turn on boiler when nothing pressed", () => {
-        subject.tick();
+        subject.update();
         expect(api.setBoilerState).toHaveBeenCalledTimes(0);
     });
 
     it("will brew when button pressed", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
+        api.getBoilerStatus.and.returnValue(BoilerStatus.NotEmpty);
 
-        subject.tick();
+        subject.update();
         expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.On);
     });
 
@@ -36,7 +38,7 @@ describe("CoffeeMaker", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
 
-        subject.tick();
+        subject.update();
 
         expect(api.setBoilerState).toHaveBeenCalledTimes(0);
     });
@@ -45,8 +47,43 @@ describe("CoffeeMaker", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
 
-        subject.tick();
+        subject.update();
 
         expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+    });
+
+    it("will not brew when the boiler is empty", () => {
+        api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
+
+        subject.update();
+
+        expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+    });
+
+    it("will stop boiling when water is empty", () => {
+        api.getBoilerStatus.and.returnValue(BoilerStatus.Empty);
+        subject.update();
+
+        expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
+    });
+
+    it("will keep coffee warm when coffeepot has cofee", () => {
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
+        subject.update();
+
+        expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.On);
+    });
+
+    it("will shut off warmer when pot is empty", () => {
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
+        subject.update();
+        expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);
+    });
+
+    it("will shut off warmer when pot is removed", () => {
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
+        subject.update();
+        expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);
     });
 });

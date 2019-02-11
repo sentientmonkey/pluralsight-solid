@@ -90,11 +90,11 @@ export interface CoffeeMakerAPI {
 
 abstract class HardwareComponent {
     protected hardware: CoffeeMakerAPI;
-    protected events: EventType[];
+    protected eventBus: EventBus;
 
-    constructor(hardware: CoffeeMakerAPI, events: EventType[]) {
+    constructor(hardware: CoffeeMakerAPI, eventBus: EventBus) {
         this.hardware = hardware;
-        this.events = events;
+        this.eventBus = eventBus;
     }
 
     public potEmpty(): boolean {
@@ -125,7 +125,7 @@ class Boiler extends HardwareComponent {
         }
         if (this.boilerIsEmpty()) {
             this.hardware.setBoilerState(BoilerState.Off);
-            this.events.push(EventType.CoffeeBrewed);
+            this.eventBus.push(EventType.CoffeeBrewed);
         }
     }
 
@@ -152,18 +152,16 @@ class Boiler extends HardwareComponent {
     }
 }
 
-enum EventType {
+export enum EventType {
     CoffeeBrewed = "CoffeeBrewed",
 }
 
 
-class Light extends HardwareComponent {
+export class Light extends HardwareComponent {
     private freshPot = false;
 
     public update(): void {
-        console.log("Light update()");
-        console.log(this.events);
-        if (this.events.findIndex((e) => e == EventType.CoffeeBrewed) != -1) {
+        if (this.eventBus.includes(EventType.CoffeeBrewed)) {
             this.hardware.setIndicicatorState(IndicatorState.On);
             this.freshPot = true;
         }
@@ -175,30 +173,43 @@ class Light extends HardwareComponent {
     }
 }
 
+class EventBus {
+    private events: EventType[];
+
+    constructor() {
+        this.events = [];
+    }
+
+    push(event: EventType): void {
+        this.events.push(event);
+    }
+
+    includes(event: EventType): boolean {
+        return this.events.includes(event);
+    }
+
+    clear() {
+        this.events.length = 0;
+    }
+}
+
 export class CoffeeMaker {
     private warmerPlate: WarmerPlate;
     private boiler: Boiler;
     private light: Light;
-    private events: EventType[];
+    private eventBus: EventBus;
 
     constructor(hardware: CoffeeMakerAPI) {
-        var events: EventType[] = [];
-        this.events = events;
-        this.warmerPlate = new WarmerPlate(hardware, events);
-        this.boiler = new Boiler(hardware, events);
-        this.light = new Light(hardware, events);
+        this.eventBus = new EventBus();
+        this.warmerPlate = new WarmerPlate(hardware, this.eventBus);
+        this.boiler = new Boiler(hardware, this.eventBus);
+        this.light = new Light(hardware, this.eventBus);
     }
 
     update(): void {
         this.boiler.update();
         this.warmerPlate.update();
         this.light.update();
-        this.clearEvents();
-    }
-
-    private clearEvents(): void {
-        while(this.events.length > 1) {
-            this.events.pop();
-        }
+        this.eventBus.clear();
     }
 }

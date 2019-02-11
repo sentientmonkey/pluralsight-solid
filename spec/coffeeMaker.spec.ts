@@ -1,6 +1,6 @@
 import "jasmine";
 
-import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState } from "../src/coffeeMaker";
+import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState, Light, EventType } from "../src/coffeeMaker";
 
 describe("CoffeeMaker", () => {
     var api: jasmine.SpyObj<CoffeeMakerAPI>;
@@ -102,15 +102,19 @@ describe("CoffeeMaker", () => {
     }
 
     it("will turn on the indicator light when the coffee is done brewing", () => {
+
         brewCycle();
         expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On);
     });
 
-    it("will turn off the indicator light when the brewed coffee is removed from warmer", () =>{
+    it("will turn off the indicator light when the brewed coffee is removed from warmer", () => {
         brewCycle();
-        api.getWarmerPlateStatus(WarmerPlateStatus.WarmerEmpty);
+        expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On);
+
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
         subject.update();
-        expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On, IndicatorState.Off);
+        expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.Off);
     });
+
 });
 

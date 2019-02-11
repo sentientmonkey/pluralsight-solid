@@ -15,6 +15,7 @@ describe("CoffeeMaker", () => {
                 "getBrewButtonStatus",
                 "setBoilerState",
                 "setWarmerState",
+                "setIndicicatorState",
             ]
         );
         subject = new CoffeeMaker(api);
@@ -86,4 +87,30 @@ describe("CoffeeMaker", () => {
         subject.update();
         expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);
     });
+
+    function brewCycle() {
+        api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
+        api.getBoilerStatus.and.returnValue(BoilerStatus.NotEmpty);
+
+        subject.update();
+
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
+        api.getBoilerStatus.and.returnValue(BoilerStatus.Empty);
+
+        subject.update();
+    }
+
+    it("will turn on the indicator light when the coffee is done brewing", () => {
+        brewCycle();
+        expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On);
+    });
+
+    it("will turn off the indicator light when the brewed coffee is removed from warmer", () =>{
+        brewCycle();
+        api.getWarmerPlateStatus(WarmerPlateStatus.WarmerEmpty);
+        subject.update();
+        expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On, IndicatorState.Off);
+    });
 });
+

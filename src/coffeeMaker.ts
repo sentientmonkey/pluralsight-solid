@@ -90,9 +90,11 @@ export interface CoffeeMakerAPI {
 
 abstract class HardwareComponent {
     protected hardware: CoffeeMakerAPI;
+    protected events: EventType[];
 
-    constructor(hardware: CoffeeMakerAPI) {
+    constructor(hardware: CoffeeMakerAPI, events: EventType[]) {
         this.hardware = hardware;
+        this.events = events;
     }
 
     public potEmpty(): boolean {
@@ -123,6 +125,7 @@ class Boiler extends HardwareComponent {
         }
         if (this.boilerIsEmpty()) {
             this.hardware.setBoilerState(BoilerState.Off);
+            this.events.push(EventType.CoffeeBrewed);
         }
     }
 
@@ -149,19 +152,53 @@ class Boiler extends HardwareComponent {
     }
 }
 
+enum EventType {
+    CoffeeBrewed = "CoffeeBrewed",
+}
+
+
+class Light extends HardwareComponent {
+    private freshPot = false;
+
+    public update(): void {
+        console.log("Light update()");
+        console.log(this.events);
+        if (this.events.findIndex((e) => e == EventType.CoffeeBrewed) != -1) {
+            this.hardware.setIndicicatorState(IndicatorState.On);
+            this.freshPot = true;
+        }
+
+        if (this.freshPot && this.hardware.getWarmerPlateStatus() == WarmerPlateStatus.WarmerEmpty) {
+            this.hardware.setIndicicatorState(IndicatorState.Off);
+            this.freshPot = false;
+        }
+    }
+}
+
 export class CoffeeMaker {
-    private hardware: CoffeeMakerAPI;
     private warmerPlate: WarmerPlate;
     private boiler: Boiler;
+    private light: Light;
+    private events: EventType[];
 
     constructor(hardware: CoffeeMakerAPI) {
-        this.hardware = hardware;
-        this.warmerPlate = new WarmerPlate(hardware);
-        this.boiler = new Boiler(hardware);
+        var events: EventType[] = [];
+        this.events = events;
+        this.warmerPlate = new WarmerPlate(hardware, events);
+        this.boiler = new Boiler(hardware, events);
+        this.light = new Light(hardware, events);
     }
 
     update(): void {
         this.boiler.update();
         this.warmerPlate.update();
+        this.light.update();
+        this.clearEvents();
+    }
+
+    private clearEvents(): void {
+        while(this.events.length > 1) {
+            this.events.pop();
+        }
     }
 }

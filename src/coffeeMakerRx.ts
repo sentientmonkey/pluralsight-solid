@@ -95,10 +95,31 @@ class Warmer extends HardwareObserver {
     }
 }
 
+class Indicator extends HardwareObserver {
+    private hasWater = false;
+    private isBrewing = false;
+
+    onBoilerStatus(value: BoilerStatus) {
+        this.hasWater = value === BoilerStatus.NotEmpty;
+        if (this.isBrewing && value === BoilerStatus.Empty) {
+            this.hardware.setIndicicatorState(IndicatorState.On);
+            this.isBrewing = false;
+        }
+    }
+
+    onBrewButtonStatus(value: BrewButtonStatus) {
+        if (this.hasWater && value === BrewButtonStatus.Pushed) {
+            this.hardware.setIndicicatorState(IndicatorState.Off);
+            this.isBrewing = true;
+        }
+    }
+}
+
 export class CoffeeMaker {
     private events: Observable<any>[];
     private boiler: Boiler;
     private warmer: Warmer;
+    private indicator: Indicator;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.events = [];
@@ -117,13 +138,16 @@ export class CoffeeMaker {
         this.events.push(buttonEvents);
 
         this.boiler = new Boiler(hardware);
-
         buttonEvents.subscribe(this.boiler);
         warmerPlateEvents.subscribe(this.boiler);
         boilerEvents.subscribe(this.boiler);
 
         this.warmer = new Warmer(hardware);
         warmerPlateEvents.subscribe(this.warmer);
+
+        this.indicator = new Indicator(hardware);
+        boilerEvents.subscribe(this.indicator);
+        buttonEvents.subscribe(this.indicator);
     }
     update(): void {
         this.events.forEach(e => e.notify());

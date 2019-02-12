@@ -110,13 +110,13 @@ describe("CoffeeMaker", () => {
         finishBrew();
     }
 
-    xit("will turn on the indicator light when the coffee is done brewing", () => {
+    it("will turn on the indicator light when the coffee is done brewing", () => {
 
         brewCycle();
         expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On);
     });
 
-    xit("will turn off the indicator light when the brewed coffee is removed from warmer", () => {
+    it("will turn off the indicator light when the brewed coffee is removed from warmer", () => {
         brewCycle();
         expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.On);
 

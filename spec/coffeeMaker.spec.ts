@@ -1,6 +1,8 @@
 import "jasmine";
 
-import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState, Light, EventType, ReliefValveState } from "../src/coffeeMaker";
+import { WarmerPlateStatus, BoilerStatus, BrewButtonStatus, BoilerState, WarmerState, IndicatorState, ReliefValveState, CoffeeMakerAPI } from "../src/coffeeMakerAPI";
+
+import { CoffeeMaker } from "../src/coffeeMaker";
 
 describe("CoffeeMaker", () => {
     var api: jasmine.SpyObj<CoffeeMakerAPI>;

@@ -9,21 +9,9 @@ abstract class HardwareComponent {
         this.eventBus = eventBus;
     }
 
-    public abstract update(): void;
-
-    protected potEmpty(): boolean {
+    public potEmpty(): boolean {
         return this.hardware.getWarmerPlateStatus()
             === WarmerPlateStatus.PotEmpty;
-    }
-
-    protected boilerIsEmpty(): boolean {
-        return this.hardware.getBoilerStatus()
-            === BoilerStatus.Empty;
-    }
-
-    protected brewButtonPushed(): boolean {
-        return this.hardware.getBrewButtonStatus()
-            === BrewButtonStatus.Pushed;
     }
 }
 
@@ -64,9 +52,19 @@ class Boiler extends HardwareComponent {
             && this.boilerHasWater();
     }
 
+    public boilerIsEmpty(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.Empty;
+    }
+
     public boilerHasWater(): boolean {
         return this.hardware.getBoilerStatus()
             === BoilerStatus.NotEmpty;
+    }
+
+    private brewButtonPushed(): boolean {
+        return this.hardware.getBrewButtonStatus()
+            === BrewButtonStatus.Pushed;
     }
 }
 
@@ -91,6 +89,27 @@ class ReliefValve extends HardwareComponent {
         }
     }
 
+    private readyToBrew(): boolean {
+        return this.brewButtonPushed()
+            && this.potEmpty()
+            && this.boilerHasWater();
+    }
+
+    public boilerIsEmpty(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.Empty;
+    }
+
+    public boilerHasWater(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.NotEmpty;
+    }
+
+    private brewButtonPushed(): boolean {
+        return this.hardware.getBrewButtonStatus()
+            === BrewButtonStatus.Pushed;
+    }
+
     private potRemoved(): boolean {
         return this.hardware.getWarmerPlateStatus()
             === WarmerPlateStatus.WarmerEmpty;
@@ -100,6 +119,7 @@ class ReliefValve extends HardwareComponent {
 enum EventType {
     CoffeeBrewed = "CoffeeBrewed",
 }
+
 
 class Light extends HardwareComponent {
     private freshPot = false;
@@ -138,19 +158,25 @@ class EventBus {
 }
 
 export class CoffeeMaker {
-    private components: HardwareComponent[];
+    private warmerPlate: WarmerPlate;
+    private boiler: Boiler;
+    private light: Light;
+    private reliefValve: ReliefValve;
     private eventBus: EventBus;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.eventBus = new EventBus();
-        this.components = [];
-        this.components.push(new WarmerPlate(hardware, this.eventBus));
-        this.components.push(new Boiler(hardware, this.eventBus));
-        this.components.push(new Light(hardware, this.eventBus));
-        this.components.push(new ReliefValve(hardware, this.eventBus));
-
-        update(): void {
-            this.components.forEach(hw => hw.update());
-            this.eventBus.clear();
-        }
+        this.warmerPlate = new WarmerPlate(hardware, this.eventBus);
+        this.boiler = new Boiler(hardware, this.eventBus);
+        this.light = new Light(hardware, this.eventBus);
+        this.reliefValve = new ReliefValve(hardware, this.eventBus);
     }
+
+    update(): void {
+        this.boiler.update();
+        this.warmerPlate.update();
+        this.light.update();
+        this.reliefValve.update();
+        this.eventBus.clear();
+    }
+}

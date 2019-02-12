@@ -9,6 +9,8 @@ abstract class HardwareComponent {
         this.eventBus = eventBus;
     }
 
+    public abstract update(): void;
+
     public potEmpty(): boolean {
         return this.hardware.getWarmerPlateStatus()
             === WarmerPlateStatus.PotEmpty;
@@ -147,25 +149,20 @@ class EventBus {
 }
 
 export class CoffeeMaker {
-    private warmerPlate: WarmerPlate;
-    private boiler: Boiler;
-    private light: Light;
-    private reliefValve: ReliefValve;
+    private components: HardwareComponent[];
     private eventBus: EventBus;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.eventBus = new EventBus();
-        this.warmerPlate = new WarmerPlate(hardware, this.eventBus);
-        this.boiler = new Boiler(hardware, this.eventBus);
-        this.light = new Light(hardware, this.eventBus);
-        this.reliefValve = new ReliefValve(hardware, this.eventBus);
+        this.components = [];
+        this.components.push(new WarmerPlate(hardware, this.eventBus));
+        this.components.push(new Boiler(hardware, this.eventBus));
+        this.components.push(new Light(hardware, this.eventBus));
+        this.components.push(new ReliefValve(hardware, this.eventBus));
     }
 
     update(): void {
-        this.boiler.update();
-        this.warmerPlate.update();
-        this.light.update();
-        this.reliefValve.update();
+        this.components.forEach(hw => hw.update());
         this.eventBus.clear();
     }
 }

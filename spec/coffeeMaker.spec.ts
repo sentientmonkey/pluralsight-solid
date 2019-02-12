@@ -24,9 +24,9 @@ describe("CoffeeMaker", () => {
         subject = new CoffeeMaker(api);
     });
 
-    it("will not turn on boiler when nothing pressed", () => {
+    xit("will not turn on boiler when nothing pressed", () => {
         subject.update();
-        expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+        expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
 
     it("will brew when button pressed", () => {

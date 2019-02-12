@@ -1,12 +1,13 @@
 import { WarmerPlateStatus, BoilerStatus, BrewButtonStatus, BoilerState, WarmerState, IndicatorState, ReliefValveState, CoffeeMakerAPI } from "./coffeeMakerAPI";
-
 interface IObserver {
+    // we can't IObserver<T> here because javascript method collision :(
     onNext(eventType: string, value: any): void;
 }
 
 enum EventType {
     BoilerStatus = "BoilerStatus",
     BrewButtonStatus = "BrewButtonStatus",
+    WarmerPlateStatus = "WarmerPlateStatus",
 }
 
 class Observable<T> {
@@ -45,17 +46,23 @@ abstract class HardwareObserver implements IObserver {
             case EventType.BrewButtonStatus:
                 this.onBrewButtonStatus(value);
                 break;
+            case EventType.WarmerPlateStatus:
+                this.onWarmerPlateStatus(value);
+                break;
         }
     }
 
     protected onBoilerStatus(value: BoilerStatus): void { };
     protected onBrewButtonStatus(value: BrewButtonStatus): void { };
+    protected onWarmerPlateStatus(value: WarmerPlateStatus): void { };
 }
 
 class Boiler extends HardwareObserver {
     private hasWater = false;
+    private hasEmptyPot = false;
 
     onBoilerStatus(value: BoilerStatus) {
+        console.log("onBoilerStatus: ", value);
         this.hasWater = value === BoilerStatus.NotEmpty;
         if (!this.hasWater) {
             this.hardware.setBoilerState(BoilerState.Off);
@@ -63,9 +70,17 @@ class Boiler extends HardwareObserver {
     }
 
     onBrewButtonStatus(value: BrewButtonStatus) {
-        if (this.hasWater && value === BrewButtonStatus.Pushed) {
+        console.log("onBrewButtonStatus: ", value);
+        if (this.hasWater
+            && this.hasEmptyPot
+            && value === BrewButtonStatus.Pushed) {
             this.hardware.setBoilerState(BoilerState.On);
         }
+    }
+
+    onWarmerPlateStatus(value: WarmerPlateStatus) {
+        console.log("onWarmerStatus: ", value);
+        this.hasEmptyPot = value === WarmerPlateStatus.PotEmpty;
     }
 }
 
@@ -82,12 +97,17 @@ export class CoffeeMaker {
         var boilerEvents = new Observable<BoilerStatus>(
             EventType.BoilerStatus,
             hardware.getBoilerStatus);
+        var warmerPlateEvents = new Observable<WarmerPlateStatus>(
+            EventType.WarmerPlateStatus,
+            hardware.getWarmerPlateStatus);
         this.events.push(boilerEvents);
+        this.events.push(warmerPlateEvents);
         this.events.push(buttonEvents);
 
         this.boiler = new Boiler(hardware);
 
         buttonEvents.subscribe(this.boiler);
+        warmerPlateEvents.subscribe(this.boiler);
         boilerEvents.subscribe(this.boiler);
     }
     update(): void {

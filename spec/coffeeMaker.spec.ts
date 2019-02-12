@@ -24,7 +24,7 @@ describe("CoffeeMaker", () => {
         subject = new CoffeeMaker(api);
     });
 
-    xit("will not turn on boiler when nothing pressed", () => {
+    it("will not turn on boiler when nothing pressed", () => {
         subject.update();
         expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
@@ -38,34 +38,33 @@ describe("CoffeeMaker", () => {
         expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.On);
     });
 
-    xit("will not brew when the warmer is empty", () => {
+    it("will not brew when the warmer is empty", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
 
         subject.update();
-
-        expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+        expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
 
-    xit("will not brew when the pot is full", () => {
+    it("will not brew when the pot is full", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
 
         subject.update();
 
-        expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+        expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
 
-    xit("will not brew when the boiler is empty", () => {
+    it("will not brew when the boiler is empty", () => {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
 
         subject.update();
 
-        expect(api.setBoilerState).toHaveBeenCalledTimes(0);
+        expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
 
-    xit("will stop boiling when water is empty", () => {
+    it("will stop boiling when water is empty", () => {
         api.getBoilerStatus.and.returnValue(BoilerStatus.Empty);
         subject.update();
 

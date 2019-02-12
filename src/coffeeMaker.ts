@@ -119,14 +119,43 @@ class WarmerPlate extends HardwareComponent {
 }
 
 class Boiler extends HardwareComponent {
+    private brewing = false;
+
     public update(): void {
         if (this.readyToBrew()) {
-            this.hardware.setBoilerState(BoilerState.On);
+            this.startBrewing();
         }
+
+        if (this.brewing) {
+            if (this.potRemoved()) {
+                this.pauseBrewing();
+            } else {
+                this.resumeBrewing();
+            }
+        }
+
         if (this.boilerIsEmpty()) {
-            this.hardware.setBoilerState(BoilerState.Off);
-            this.eventBus.push(EventType.CoffeeBrewed);
+            this.finishBrewing();
         }
+    }
+
+    private startBrewing() {
+        this.hardware.setBoilerState(BoilerState.On);
+        this.brewing = true;
+    }
+
+    private pauseBrewing() {
+        this.hardware.setReliefValveState(ReliefValveState.Open);
+    }
+
+    private resumeBrewing() {
+        this.hardware.setReliefValveState(ReliefValveState.Closed);
+    }
+
+    private finishBrewing() {
+        this.hardware.setBoilerState(BoilerState.Off);
+        this.eventBus.push(EventType.CoffeeBrewed);
+        this.brewing = false;
     }
 
     private readyToBrew(): boolean {
@@ -134,7 +163,6 @@ class Boiler extends HardwareComponent {
             && this.potEmpty()
             && this.boilerHasWater();
     }
-
 
     public boilerIsEmpty(): boolean {
         return this.hardware.getBoilerStatus()
@@ -149,6 +177,11 @@ class Boiler extends HardwareComponent {
     private brewButtonPushed(): boolean {
         return this.hardware.getBrewButtonStatus()
             === BrewButtonStatus.Pushed;
+    }
+
+    private potRemoved(): boolean {
+        return this.hardware.getWarmerPlateStatus()
+            === WarmerPlateStatus.WarmerEmpty;
     }
 }
 

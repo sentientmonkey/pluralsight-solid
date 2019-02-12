@@ -1,6 +1,6 @@
 import "jasmine";
 
-import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState, Light, EventType } from "../src/coffeeMaker";
+import { CoffeeMakerAPI, CoffeeMaker, BoilerStatus, BrewButtonStatus, BoilerState, WarmerPlateStatus, IndicatorState, WarmerState, Light, EventType, ReliefValveState } from "../src/coffeeMaker";
 
 describe("CoffeeMaker", () => {
     var api: jasmine.SpyObj<CoffeeMakerAPI>;
@@ -16,6 +16,7 @@ describe("CoffeeMaker", () => {
                 "setBoilerState",
                 "setWarmerState",
                 "setIndicicatorState",
+                "setReliefValveState",
             ]
         );
         subject = new CoffeeMaker(api);
@@ -88,17 +89,24 @@ describe("CoffeeMaker", () => {
         expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);
     });
 
-    function brewCycle() {
+    function startBrew() {
         api.getBrewButtonStatus.and.returnValue(BrewButtonStatus.Pushed);
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
         api.getBoilerStatus.and.returnValue(BoilerStatus.NotEmpty);
 
         subject.update();
+    }
 
+    function finishBrew() {
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
         api.getBoilerStatus.and.returnValue(BoilerStatus.Empty);
 
         subject.update();
+    }
+
+    function brewCycle() {
+        startBrew();
+        finishBrew();
     }
 
     it("will turn on the indicator light when the coffee is done brewing", () => {
@@ -116,5 +124,19 @@ describe("CoffeeMaker", () => {
         expect(api.setIndicicatorState).toHaveBeenCalledWith(IndicatorState.Off);
     });
 
+
+    function removePot() {
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
+        subject.update();
+    }
+
+    it("will interrupt brewing if coffee pot is removed", () => {
+        startBrew();
+        removePot();
+        expect(api.setReliefValveState).toHaveBeenCalledWith(ReliefValveState.Open);
+        api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
+        subject.update();
+        expect(api.setReliefValveState).toHaveBeenCalledWith(ReliefValveState.Closed);
+    });
 });
 

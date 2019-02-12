@@ -71,20 +71,20 @@ describe("CoffeeMaker", () => {
         expect(api.setBoilerState).toHaveBeenCalledWith(BoilerState.Off);
     });
 
-    xit("will keep coffee warm when coffeepot has cofee", () => {
+    it("will keep coffee warm when coffeepot has cofee", () => {
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotNotEmpty);
         subject.update();
 
         expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.On);
     });
 
-    xit("will shut off warmer when pot is empty", () => {
+    it("will shut off warmer when pot is empty", () => {
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.PotEmpty);
         subject.update();
         expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);
     });
 
-    xit("will shut off warmer when pot is removed", () => {
+    it("will shut off warmer when pot is removed", () => {
         api.getWarmerPlateStatus.and.returnValue(WarmerPlateStatus.WarmerEmpty);
         subject.update();
         expect(api.setWarmerState).toHaveBeenCalledWith(WarmerState.Off);

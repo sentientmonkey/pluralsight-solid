@@ -62,7 +62,6 @@ class Boiler extends HardwareObserver {
     private hasEmptyPot = false;
 
     onBoilerStatus(value: BoilerStatus) {
-        console.log("onBoilerStatus: ", value);
         this.hasWater = value === BoilerStatus.NotEmpty;
         if (!this.hasWater) {
             this.hardware.setBoilerState(BoilerState.Off);
@@ -70,7 +69,6 @@ class Boiler extends HardwareObserver {
     }
 
     onBrewButtonStatus(value: BrewButtonStatus) {
-        console.log("onBrewButtonStatus: ", value);
         if (this.hasWater
             && this.hasEmptyPot
             && value === BrewButtonStatus.Pushed) {
@@ -79,15 +77,28 @@ class Boiler extends HardwareObserver {
     }
 
     onWarmerPlateStatus(value: WarmerPlateStatus) {
-        console.log("onWarmerStatus: ", value);
         this.hasEmptyPot = value === WarmerPlateStatus.PotEmpty;
+    }
+}
+
+class Warmer extends HardwareObserver {
+    onWarmerPlateStatus(value: WarmerPlateStatus) {
+        switch (value) {
+            case WarmerPlateStatus.PotNotEmpty:
+                this.hardware.setWarmerState(WarmerState.On);
+                break;
+            case WarmerPlateStatus.PotEmpty:
+            case WarmerPlateStatus.WarmerEmpty:
+                this.hardware.setWarmerState(WarmerState.Off);
+                break;
+        }
     }
 }
 
 export class CoffeeMaker {
     private events: Observable<any>[];
-
     private boiler: Boiler;
+    private warmer: Warmer;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.events = [];
@@ -100,6 +111,7 @@ export class CoffeeMaker {
         var warmerPlateEvents = new Observable<WarmerPlateStatus>(
             EventType.WarmerPlateStatus,
             hardware.getWarmerPlateStatus);
+
         this.events.push(boilerEvents);
         this.events.push(warmerPlateEvents);
         this.events.push(buttonEvents);
@@ -109,6 +121,9 @@ export class CoffeeMaker {
         buttonEvents.subscribe(this.boiler);
         warmerPlateEvents.subscribe(this.boiler);
         boilerEvents.subscribe(this.boiler);
+
+        this.warmer = new Warmer(hardware);
+        warmerPlateEvents.subscribe(this.warmer);
     }
     update(): void {
         this.events.forEach(e => e.notify());

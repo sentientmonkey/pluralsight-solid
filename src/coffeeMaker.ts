@@ -11,9 +11,19 @@ abstract class HardwareComponent {
 
     public abstract update(): void;
 
-    public potEmpty(): boolean {
+    protected potEmpty(): boolean {
         return this.hardware.getWarmerPlateStatus()
             === WarmerPlateStatus.PotEmpty;
+    }
+
+    protected boilerIsEmpty(): boolean {
+        return this.hardware.getBoilerStatus()
+            === BoilerStatus.Empty;
+    }
+
+    protected brewButtonPushed(): boolean {
+        return this.hardware.getBrewButtonStatus()
+            === BrewButtonStatus.Pushed;
     }
 }
 
@@ -54,19 +64,9 @@ class Boiler extends HardwareComponent {
             && this.boilerHasWater();
     }
 
-    public boilerIsEmpty(): boolean {
-        return this.hardware.getBoilerStatus()
-            === BoilerStatus.Empty;
-    }
-
     public boilerHasWater(): boolean {
         return this.hardware.getBoilerStatus()
             === BoilerStatus.NotEmpty;
-    }
-
-    private brewButtonPushed(): boolean {
-        return this.hardware.getBrewButtonStatus()
-            === BrewButtonStatus.Pushed;
     }
 }
 
@@ -91,16 +91,6 @@ class ReliefValve extends HardwareComponent {
         }
     }
 
-    public boilerIsEmpty(): boolean {
-        return this.hardware.getBoilerStatus()
-            === BoilerStatus.Empty;
-    }
-
-    private brewButtonPushed(): boolean {
-        return this.hardware.getBrewButtonStatus()
-            === BrewButtonStatus.Pushed;
-    }
-
     private potRemoved(): boolean {
         return this.hardware.getWarmerPlateStatus()
             === WarmerPlateStatus.WarmerEmpty;
@@ -110,7 +100,6 @@ class ReliefValve extends HardwareComponent {
 enum EventType {
     CoffeeBrewed = "CoffeeBrewed",
 }
-
 
 class Light extends HardwareComponent {
     private freshPot = false;
@@ -159,10 +148,9 @@ export class CoffeeMaker {
         this.components.push(new Boiler(hardware, this.eventBus));
         this.components.push(new Light(hardware, this.eventBus));
         this.components.push(new ReliefValve(hardware, this.eventBus));
-    }
 
-    update(): void {
-        this.components.forEach(hw => hw.update());
-        this.eventBus.clear();
+        update(): void {
+            this.components.forEach(hw => hw.update());
+            this.eventBus.clear();
+        }
     }
-}

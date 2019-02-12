@@ -115,11 +115,18 @@ class Indicator extends HardwareObserver {
     }
 }
 
+class ReliefValve extends HardwareObserver {
+    onWarmerPlateStatus(value: WarmerPlateStatus) {
+        if (value === WarmerPlateStatus.PotEmpty) {
+            this.hardware.setReliefValveState(ReliefValveState.Open);
+        } else {
+            this.hardware.setReliefValveState(ReliefValveState.Closed);
+        }
+    }
+}
+
 export class CoffeeMaker {
     private events: Observable<any>[];
-    private boiler: Boiler;
-    private warmer: Warmer;
-    private indicator: Indicator;
 
     constructor(hardware: CoffeeMakerAPI) {
         this.events = [];
@@ -137,18 +144,22 @@ export class CoffeeMaker {
         this.events.push(warmerPlateEvents);
         this.events.push(buttonEvents);
 
-        this.boiler = new Boiler(hardware);
-        buttonEvents.subscribe(this.boiler);
-        warmerPlateEvents.subscribe(this.boiler);
-        boilerEvents.subscribe(this.boiler);
+        var boiler = new Boiler(hardware);
+        buttonEvents.subscribe(boiler);
+        warmerPlateEvents.subscribe(boiler);
+        boilerEvents.subscribe(boiler);
 
-        this.warmer = new Warmer(hardware);
-        warmerPlateEvents.subscribe(this.warmer);
+        var warmer = new Warmer(hardware);
+        warmerPlateEvents.subscribe(warmer);
 
-        this.indicator = new Indicator(hardware);
-        boilerEvents.subscribe(this.indicator);
-        buttonEvents.subscribe(this.indicator);
+        var indicator = new Indicator(hardware);
+        boilerEvents.subscribe(indicator);
+        buttonEvents.subscribe(indicator);
+
+        var reliefValve = new ReliefValve(hardware);
+        warmerPlateEvents.subscribe(reliefValve);
     }
+
     update(): void {
         this.events.forEach(e => e.notify());
     }

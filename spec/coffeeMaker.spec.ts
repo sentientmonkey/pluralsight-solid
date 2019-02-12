@@ -131,7 +131,7 @@ describe("CoffeeMaker", () => {
         subject.update();
     }
 
-    xit("will interrupt brewing if coffee pot is removed", () => {
+    it("will interrupt brewing if coffee pot is removed", () => {
         startBrew();
         removePot();
         expect(api.setReliefValveState).toHaveBeenCalledWith(ReliefValveState.Open);
